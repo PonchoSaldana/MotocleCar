@@ -49,13 +49,13 @@ class CarRacing {
 
         //logo elit
         this.elitLogo = new Image(); 
-        this.elitLogo.src = "imagenes/logos/elit.png";
+        this.elitLogo.src = "images/logos/elit.png";
         this.elitLogo.onerror = () => {
             console.error("Error al cargar elit.png en el constructor");
         };
         //logo congreso
         this.congresoLogo = new Image();
-        this.congresoLogo.src = "imagenes/logos/LogoCongreso.png";
+        this.congresoLogo.src = "images/logos/LogoCongreso.png";
         this.congresoLogo.onerror = () => {
             console.error("Error al cargar congreso.png en el constructor");
         };
