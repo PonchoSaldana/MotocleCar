@@ -16,9 +16,9 @@ class CarRacing {
 
         //fondos
         this.backgrounds = [
-            "imagenes/fondos/fondo.png",        //día
-            "imagenes/fondos/fondoTarde.png",  //tarde
-            "imagenes/fondos/fondoNoche.png"   //noche
+            "images/funds/fondo.png",        //día
+            "images/funds/fondoTarde.png",  //tarde
+            "images/funds/fondoNoche.png"   //noche
         ];
         this.currentBackgroundIndex = 0;
 
@@ -31,7 +31,7 @@ class CarRacing {
 
         //carro motocle
         this.playerCarImage = new Image();
-        this.playerCarImage.src = "imagenes/carros/motocle.png";
+        this.playerCarImage.src = "images/cars/motocle.png";
 
         //enemigos
         this.enemyCarImages = [
@@ -41,11 +41,11 @@ class CarRacing {
             new Image(),
             new Image()
         ];
-        this.enemyCarImages[0].src = "imagenes/carros/combi.png"; 
-        this.enemyCarImages[1].src = "imagenes/carros/carro.png";
-        this.enemyCarImages[2].src = "imagenes/carros/hinfinitum.png"; 
-        this.enemyCarImages[3].src = "imagenes/carros/moto.png";
-        this.enemyCarImages[4].src = "imagenes/carros/bici.png";
+        this.enemyCarImages[0].src = "images/cars/combi.png"; 
+        this.enemyCarImages[1].src = "images/cars/carro.png";
+        this.enemyCarImages[2].src = "images/cars/hinfinitum.png"; 
+        this.enemyCarImages[3].src = "images/cars/moto.png";
+        this.enemyCarImages[4].src = "images/cars/bici.png";
 
         //logo elit
         this.elitLogo = new Image(); 
@@ -69,11 +69,11 @@ class CarRacing {
         ];
 
         //profes 
-        this.crashImages[0].src = "imagenes/profes/Pedraza.png";
-        this.crashImages[1].src = "imagenes/profes/Elvis.png";
-        this.crashImages[2].src = "imagenes/profes/Julio.png";
-        this.crashImages[3].src = "imagenes/profes/Victor.png";
-        this.crashImages[4].src = "imagenes/carros/bici.png";
+        this.crashImages[0].src = "images/professors/Pedraza.png";
+        this.crashImages[1].src = "images/professors/Elvis.png";
+        this.crashImages[2].src = "images/professors/Julio.png";
+        this.crashImages[3].src = "images/professors/Victor.png";
+        this.crashImages[4].src = "images/cars/bici.png";
 
         //lista de enemigos rebueltos
         this.enemyPool = [0, 1, 2, 3, 4];
