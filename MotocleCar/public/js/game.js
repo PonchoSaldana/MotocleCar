@@ -95,6 +95,12 @@ class CarRacing {
 
         // Ajustar lienzo al cambiar tamaño de ventana
         window.addEventListener("resize", () => this.resizeCanvas());
+
+        // WebSocket para guardar puntajes
+        this.socket = new WebSocket('ws://localhost:8080');
+        this.userId = prompt('Ingresa tu nombre de usuario') || 'Anonymous';
+        this.socket.onopen = () => console.log('Conectado al servidor WebSocket');
+        this.socket.onerror = (error) => console.error('Error en WebSocket:', error);
     }
 
     shuffleEnemies() {
@@ -251,55 +257,59 @@ class CarRacing {
         this.ctx.restore();
     }
 
- display_message(msg) {
-    this.game_over = true;
-    this.ctx.save();
-    this.ctx.scale(this.scale, this.scale);
-    this.ctx.fillStyle = this.black;
-    this.ctx.fillRect(0, 0, this.base_width, this.base_height);
+    display_message(msg) {
+        this.game_over = true;
+        this.ctx.save();
+        this.ctx.scale(this.scale, this.scale);
+        this.ctx.fillStyle = this.black;
+        this.ctx.fillRect(0, 0, this.base_width, this.base_height);
 
-    //para mover el texto e imagen
-    const baseY = this.base_height / 2 - 400;  
+        //para mover el texto e imagen
+        const baseY = this.base_height / 2 - 400;  
 
-   
-    this.ctx.font = `bold ${72}px Comic Sans MS`;
-    this.ctx.fillStyle = this.white;
-    this.ctx.textAlign = "center";
-    this.ctx.fillText(msg, this.base_width / 2, baseY);
+        this.ctx.font = `bold ${72}px Comic Sans MS`;
+        this.ctx.fillStyle = this.white;
+        this.ctx.textAlign = "center";
+        this.ctx.fillText(msg, this.base_width / 2, baseY);
 
-    //puntaje
-    this.ctx.font = `${40}px Comic Sans MS`;
-    this.ctx.fillText(`Puntaje final: ${this.score}`, this.base_width / 2, baseY + 70);
+        //puntaje
+        this.ctx.font = `${40}px Comic Sans MS`;
+        this.ctx.fillText(`Puntaje final: ${this.score}`, this.base_width / 2, baseY + 70);
 
-    this.ctx.font = `${30}px Comic Sans MS`;
-    this.ctx.fillText("Toca la pantalla o F para reiniciar", this.base_width / 2, baseY + 130);
+        this.ctx.font = `${30}px Comic Sans MS`;
+        this.ctx.fillText("Toca la pantalla o F para reiniciar", this.base_width / 2, baseY + 130);
 
-    //imagen del profe 
-    if (this.crashEnemy !== undefined) {
-        const crashImg = this.crashImages[this.crashEnemy];
-        if (crashImg && crashImg.complete && crashImg.naturalWidth !== 0) {
-            const imgWidth = 400;
-            const imgHeight = 500;
-            const posX = this.base_width / 2 - imgWidth / 2;
-            const posY = baseY + 180;
-            this.ctx.drawImage(crashImg, posX, posY, imgWidth, imgHeight);
+        //imagen del profe 
+        if (this.crashEnemy !== undefined) {
+            const crashImg = this.crashImages[this.crashEnemy];
+            if (crashImg && crashImg.complete && crashImg.naturalWidth !== 0) {
+                const imgWidth = 400;
+                const imgHeight = 500;
+                const posX = this.base_width / 2 - imgWidth / 2;
+                const posY = baseY + 180;
+                this.ctx.drawImage(crashImg, posX, posY, imgWidth, imgHeight);
+            }
         }
-    }
 
-    //logos
-    if (this.elitLogo.complete && this.elitLogo.naturalWidth !== 0) {
-        const logoSize = 100;
-        this.ctx.drawImage(this.elitLogo, this.base_width - logoSize - 10, this.base_height - logoSize - 10, logoSize, logoSize);
-    }
+        //logos
+        if (this.elitLogo.complete && this.elitLogo.naturalWidth !== 0) {
+            const logoSize = 100;
+            this.ctx.drawImage(this.elitLogo, this.base_width - logoSize - 10, this.base_height - logoSize - 10, logoSize, logoSize);
+        }
 
-    if (this.congresoLogo.complete && this.congresoLogo.naturalWidth !== 0) {
-        const logoSize = 120;
-        this.ctx.drawImage(this.congresoLogo, 10, this.base_height - logoSize - 10, logoSize, logoSize);
-    }
+        if (this.congresoLogo.complete && this.congresoLogo.naturalWidth !== 0) {
+            const logoSize = 120;
+            this.ctx.drawImage(this.congresoLogo, 10, this.base_height - logoSize - 10, logoSize, logoSize);
+        }
 
-    this.ctx.textAlign = "center";
-    this.ctx.restore();
-}
+        // Enviar puntaje al servidor
+        if (this.socket.readyState === WebSocket.OPEN) {
+            this.socket.send(JSON.stringify({ userId: this.userId, score: this.score }));
+        }
+
+        this.ctx.textAlign = "center";
+        this.ctx.restore();
+    }
 
     check_collision() {
         const hitboxScale = 0.5;//hitbox
