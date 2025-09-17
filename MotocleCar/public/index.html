@@ -5,63 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png"  sizes="200x200" href="images/logos/favicon.png">
     <title>MotocleCar</title>
-    <style>
-   body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background-color: #000;
-        }
-         body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background-color: #000;
-        }
-        canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-            max-width: 100%;
-            max-height: 100%;
-            touch-action: none;
-            object-fit: contain;
-        }
-        @media (max-width: 768px) {
-            canvas {
-                width: 100vw;
-                height: auto;
-            }
-        }
-        @media (max-height: 600px) and (orientation: landscape) {
-            canvas {
-                height: 100vh;
-                width: auto;
-            }
-        }
-        @media (orientation: portrait) {
-            canvas {
-                width: 100vw;
-                height: auto;
-            }
-        }
-        @media (orientation: landscape) {
-            canvas {
-                height: 100vh;
-                width: auto;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
+      <div id="musicControls">
+    <button id="pauseBtn">⏸️ Pausa</button>
+    <button id="nextBtn">⏭️ Cambiar canción</button>
+  </div>
     <div>
     <canvas id="gameCanvas"></canvas>
     <script src="js/game.js"></script> 

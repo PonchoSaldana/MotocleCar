@@ -13,6 +13,8 @@ class CarRacing {
         this.green = "#000000";   
         this.gray = "#808080";
         this.fps = 90;
+        this.paused = false;
+
 
         //fondos
         this.backgrounds = [
@@ -101,6 +103,58 @@ class CarRacing {
         this.userId = prompt('Ingresa tu nombre de usuario') || 'Anonymous';
         this.socket.onopen = () => console.log('Conectado al servidor WebSocket');
         this.socket.onerror = (error) => console.error('Error en WebSocket:', error);
+
+        // Lista de canciones
+        this.songs = [
+            "sounds/elAmordeSuVida.mp3",
+            "sounds/hablamedeti.mp3",
+            "sounds/coqueta.mp3"
+        ];
+
+        // Elegir aleatoria al inicio
+        let randomSong = this.songs[Math.floor(Math.random() * this.songs.length)];
+        this.backgroundMusic = new Audio(randomSong);
+        this.backgroundMusic.loop = true;
+        this.backgroundMusic.volume = 0.5;
+
+           this.initialize();
+        window.addEventListener("keydown", (e) => {
+            this.keys[e.key] = true;
+            if (this.backgroundMusic.paused) {
+                this.backgroundMusic.play();
+            }
+        });
+        window.addEventListener("keyup", (e) => this.keys[e.key] = false);
+        window.addEventListener("resize", () => this.resizeCanvas());
+        this.canvas.addEventListener("touchstart", (e) => this.handleTouchStart(e));
+        this.canvas.addEventListener("touchend", (e) => this.handleTouchEnd(e));
+        this.canvas.addEventListener("touchmove", (e) => this.handleTouchMove(e));
+
+        // controles de música
+   document.getElementById("pauseBtn").addEventListener("click", () => {
+    this.paused = !this.paused; // alterna entre true/false
+
+    if (this.paused) {
+        this.backgroundMusic.pause();
+        document.getElementById("pauseBtn").textContent = "▶️";
+    } else {
+        this.backgroundMusic.play();
+        document.getElementById("pauseBtn").textContent = "⏸️";
+        this.gameLoop(); // reanuda el bucle del juego
+    }
+});
+    document.getElementById("nextBtn").addEventListener("click", () => {
+    this.backgroundMusic.pause();
+    
+    let newSong;
+    do {
+        newSong = this.songs[Math.floor(Math.random() * this.songs.length)];
+    } while (this.backgroundMusic.src.includes(newSong));
+
+    this.backgroundMusic.src = newSong;
+    this.backgroundMusic.play();
+});
+
     }
 
     shuffleEnemies() {
@@ -342,6 +396,8 @@ class CarRacing {
             if (this.keys["ArrowRight"]) this.car_x += this.car_speed;
             if (this.keys["ArrowUp"]) this.car_y -= this.car_speed;
             if (this.keys["ArrowDown"]) this.car_y += this.car_speed;
+            if (this.paused) return; // si está en pausa no actualiza nada
+
 
             this.car_x = Math.max(this.road_x, Math.min(this.car_x, this.road_x + this.road_width - this.car_width / this.scale));
             this.car_y = Math.max(0, Math.min(this.car_y, this.base_height - this.car_height / this.scale));
@@ -371,6 +427,7 @@ class CarRacing {
             this.game_over = false; 
         }
     }
+    
 
     run() {
         const gameLoop = () => {
