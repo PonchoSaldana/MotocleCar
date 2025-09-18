@@ -7,156 +7,142 @@ class CarRacing {
         this.base_height = 1510;
         this.scale = 1;
         this.resizeCanvas();
+
         this.black = "#000000";
         this.white = "#FFFFFF";
         this.red = "#FF0000";
-        this.green = "#000000";   
+        this.green = "#000000";
         this.gray = "#808080";
         this.fps = 90;
         this.paused = false;
+        this.gameLoopId = null; // Inicializar gameLoopId
 
-
-        //fondos
+        // Fondos
         this.backgrounds = [
-            "images/funds/fondo.png",        //día
-            "images/funds/fondoTarde.png",  //tarde
-            "images/funds/fondoNoche.png"   //noche
+            "images/funds/fondo.png",
+            "images/funds/fondoTarde.png",
+            "images/funds/fondoNoche.png"
         ];
         this.currentBackgroundIndex = 0;
-
-        // Cargar imágenes de los fondos
         this.backgroundImages = this.backgrounds.map(src => {
             const img = new Image();
             img.src = src;
             return img;
         });
 
-        //carro motocle
+        // Carro jugador
         this.playerCarImage = new Image();
         this.playerCarImage.src = "images/cars/motocle.png";
 
-        //enemigos
+        // Enemigos
         this.enemyCarImages = [
-            new Image(),
-            new Image(),
-            new Image(),
-            new Image(),
-            new Image()
+            new Image(), new Image(), new Image(), new Image(), new Image()
         ];
-        this.enemyCarImages[0].src = "images/cars/combi.png"; 
+        this.enemyCarImages[0].src = "images/cars/combi.png";
         this.enemyCarImages[1].src = "images/cars/carro.png";
-        this.enemyCarImages[2].src = "images/cars/hinfinitum.png"; 
+        this.enemyCarImages[2].src = "images/cars/hinfinitum.png";
         this.enemyCarImages[3].src = "images/cars/moto.png";
         this.enemyCarImages[4].src = "images/cars/bici.png";
 
-        //logo elit
-        this.elitLogo = new Image(); 
-        this.elitLogo.src = "images/logos/elit.png";
-        this.elitLogo.onerror = () => {
-            console.error("Error al cargar elit.png en el constructor");
-        };
-        //logo congreso
-        this.congresoLogo = new Image();
-        this.congresoLogo.src = "images/logos/LogoCongreso.png";
-        this.congresoLogo.onerror = () => {
-            console.error("Error al cargar congreso.png en el constructor");
-        };
-        //imaagenes de los profes
-        this.crashImages = [
-            new Image(),
-            new Image(),
-            new Image(),
-            new Image(),
-            new Image()
-        ];
+        // Logos
+        this.elitLogo = new Image(); this.elitLogo.src = "images/logos/elit.png";
+        this.congresoLogo = new Image(); this.congresoLogo.src = "images/logos/LogoCongreso.png";
 
-        //profes 
+        // Imágenes de profes (crash)
+        this.crashImages = [new Image(), new Image(), new Image(), new Image(), new Image()];
         this.crashImages[0].src = "images/professors/Pedraza.png";
         this.crashImages[1].src = "images/professors/Elvis.png";
         this.crashImages[2].src = "images/professors/Julio.png";
         this.crashImages[3].src = "images/professors/Victor.png";
         this.crashImages[4].src = "images/cars/bici.png";
 
-        //lista de enemigos rebueltos
-        this.enemyPool = [0, 1, 2, 3, 4];
+        // Pool de enemigos
+        this.enemyPool = [0,1,2,3,4];
         this.shuffleEnemies();
+
+        // Control de intervalo de spawn
+        this.lastSpawnTime = 0;
+        this.minSpawnInterval = 500; // 500ms entre spawns
 
         this.initialize();
 
-        // Manejo de eventos de teclado
+        // Eventos teclado
         this.keys = {};
-        window.addEventListener("keydown", (e) => this.keys[e.key] = true);
+        window.addEventListener("keydown", (e) => {
+            this.keys[e.key] = true;
+            // reproducir música al presionar tecla (si está pausada)
+            if (this.backgroundMusic && this.backgroundMusic.paused) this.backgroundMusic.play();
+        });
         window.addEventListener("keyup", (e) => this.keys[e.key] = false);
 
-        // Manejo de eventos táctiles
-        this.touchStartX = null;
-        this.touchStartY = null;
+        // Táctiles
+        this.touchStartX = null; this.touchStartY = null;
         this.canvas.addEventListener("touchstart", (e) => this.handleTouchStart(e));
         this.canvas.addEventListener("touchmove", (e) => this.handleTouchMove(e));
         this.canvas.addEventListener("touchend", (e) => this.handleTouchEnd(e));
 
-        // Ajustar lienzo al cambiar tamaño de ventana
+        // Resize
         window.addEventListener("resize", () => this.resizeCanvas());
 
-        // WebSocket para guardar puntajes
-        this.socket = new WebSocket('ws://localhost:8080');
-        this.userId = prompt('Ingresa tu nombre de usuario') || 'Anonymous';
-        this.socket.onopen = () => console.log('Conectado al servidor WebSocket');
-        this.socket.onerror = (error) => console.error('Error en WebSocket:', error);
-
-        // Lista de canciones
+        // Música
         this.songs = [
             "sounds/elAmordeSuVida.mp3",
             "sounds/hablamedeti.mp3",
-            "sounds/coqueta.mp3"
+            "sounds/coqueta.mp3",
+            "sounds/lasnoches.mp3",
+            "sounds/MALPORTA.mp3",
+            "sounds/SabanasBlancas.mp3",
+            "sounds/Secunena.mp3",
+            "sounds/MIÉNTELE.mp3",
+            "sounds/TUSANCHO.mp3",
+            "sounds/CAPERUZA.mp3",
+            "sounds/SERPIENTE.mp3",
+            "sounds/goosebumps.mp3",
+            "sounds/ENALTAVOZ.mp3"
         ];
-
-        // Elegir aleatoria al inicio
-        let randomSong = this.songs[Math.floor(Math.random() * this.songs.length)];
-        this.backgroundMusic = new Audio(randomSong);
+       this.songPool = Array.from({length: this.songs.length}, (_, i) => i); // [0,1,2,3,4,5,6]
+        this.shuffleSongs();
+        this.currentSongIndex = 0;
+        this.backgroundMusic = new Audio(this.songs[this.songPool[this.currentSongIndex]]);
         this.backgroundMusic.loop = true;
         this.backgroundMusic.volume = 0.5;
 
-           this.initialize();
-        window.addEventListener("keydown", (e) => {
-            this.keys[e.key] = true;
-            if (this.backgroundMusic.paused) {
+        // Botones música
+        const pauseBtn = document.getElementById("pauseBtn");
+        const nextBtn = document.getElementById("nextBtn");
+        if (pauseBtn) {
+            pauseBtn.addEventListener("click", () => {
+                this.paused = !this.paused;
+                if (this.paused) {
+                    this.backgroundMusic.pause();
+                } else {
+                    this.backgroundMusic.play();
+                }
+            });
+        }
+        if (nextBtn) {
+            nextBtn.addEventListener("click", () => {
+                this.backgroundMusic.pause();
+                // Move to the next song in the shuffled pool
+                this.currentSongIndex++;
+                if (this.currentSongIndex >= this.songPool.length) {
+                    this.shuffleSongs();
+                    this.currentSongIndex = 0;
+                }
+                this.backgroundMusic.src = this.songs[this.songPool[this.currentSongIndex]];
                 this.backgroundMusic.play();
-            }
-        });
-        window.addEventListener("keyup", (e) => this.keys[e.key] = false);
-        window.addEventListener("resize", () => this.resizeCanvas());
-        this.canvas.addEventListener("touchstart", (e) => this.handleTouchStart(e));
-        this.canvas.addEventListener("touchend", (e) => this.handleTouchEnd(e));
-        this.canvas.addEventListener("touchmove", (e) => this.handleTouchMove(e));
+            });
+        }
 
-        // controles de música
-   document.getElementById("pauseBtn").addEventListener("click", () => {
-    this.paused = !this.paused; // alterna entre true/false
-
-    if (this.paused) {
-        this.backgroundMusic.pause();
-        document.getElementById("pauseBtn").textContent = "▶️";
-    } else {
-        this.backgroundMusic.play();
-        document.getElementById("pauseBtn").textContent = "⏸️";
-        this.gameLoop(); // reanuda el bucle del juego
-    }
-});
-    document.getElementById("nextBtn").addEventListener("click", () => {
-    this.backgroundMusic.pause();
-    
-    let newSong;
-    do {
-        newSong = this.songs[Math.floor(Math.random() * this.songs.length)];
-    } while (this.backgroundMusic.src.includes(newSong));
-
-    this.backgroundMusic.src = newSong;
-    this.backgroundMusic.play();
-});
-
+        // ... (rest of the constructor remains unchanged)
     }
 
+    shuffleSongs() {
+        for (let i = this.songPool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.songPool[i], this.songPool[j]] = [this.songPool[j], this.songPool[i]];
+        }
+    }
     shuffleEnemies() {
         for (let i = this.enemyPool.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -171,68 +157,80 @@ class CarRacing {
             window.innerWidth / this.base_width,
             window.innerHeight / this.base_height
         );
-        this.display_width = this.canvas.width;
-        this.display_height = this.canvas.height;
     }
 
     initialize() {
-        this.car_width = 120 * this.scale;
-        this.car_height = 240 * this.scale;
+        // Notar: valores en "unidades del mundo" (no multiplicados por scale)
+        this.car_width = 120;
+        this.car_height = 240;
         this.car_x = this.base_width / 2 - this.car_width / 2;
-        this.car_y = this.base_height - this.car_height - 20 * this.scale;
-        this.car_speed = 8 * this.scale;
+        this.car_y = this.base_height - this.car_height - 20;
+        this.car_speed = 4;
         this.enemies = [];
-        this.enemy_width = 120 * this.scale;
-        this.enemy_height = 240 * this.scale;
-        this.enemy_speed = 10 * this.scale;
+        this.enemy_width = 120;
+        this.enemy_height = 240;
+        this.enemy_speed = 4;
         this.bg_y = 0;
-        this.bg_speed = 10 * this.scale;
+        this.bg_speed = this.enemy_speed;
         this.score = 0;
         this.game_over = false;
         this.road_width = this.base_width / 2;
         this.road_x = this.base_width / 4;
-        this.touchStartX = null;
-        this.touchStartY = null;
-
-        this.currentBackgroundIndex = 0;
-        this.enemyPool = [0, 1, 2, 3, 4];
-        this.shuffleEnemies();
-
+        this.currentBackgroundIndex = 0; // Reset background to first one
+        this.lastSpawnTime = 0; // Reset spawn timer
         this.spawnEnemy();
     }
 
     spawnEnemy() {
-        const maxAttempts = 10;
-        let attempts = 0;
-        let validPosition = false;
-        let enemy_x;
-
         if (this.enemyPool.length === 0) {
-            this.enemyPool = [0, 1, 2, 3, 4];
+            this.enemyPool = [0,1,2,3,4];
             this.shuffleEnemies();
         }
         const designIndex = this.enemyPool.pop();
+        const hitboxScale = 0.5; // Same as in check_collision
+        const maxAttempts = 10; // Limit attempts to avoid infinite loops
+        const verticalBuffer = this.enemy_height * 2; // Buffer to prevent vertical overlap
+        let attempts = 0;
+        let enemy_x, validPosition;
 
-        while (!validPosition && attempts < maxAttempts) {
-            enemy_x = Math.floor(Math.random() * (this.road_width - this.enemy_width)) + this.road_x;
+        do {
             validPosition = true;
+            enemy_x = Math.floor(Math.random() * (this.road_width - this.enemy_width)) + this.road_x;
+            const newEnemyRect = {
+                x: enemy_x + this.enemy_width * (1 - hitboxScale) / 2,
+                y: -this.enemy_height + this.enemy_height * (1 - hitboxScale) / 2,
+                width: this.enemy_width * hitboxScale,
+                height: this.enemy_height * hitboxScale + verticalBuffer // Extended hitbox vertically
+            };
 
-            const minHorizontalDistance = this.enemy_width;
-            const minVerticalDistance = this.enemy_height * 2;
-
-            for (let enemy of this.enemies) {
-                const horizontalOverlap = Math.abs(enemy_x - enemy.x) < minHorizontalDistance;
-                const verticalOverlap = Math.abs(-this.enemy_height - enemy.y) < minVerticalDistance;
-                if (horizontalOverlap && verticalOverlap) {
+            // Check for overlap with existing enemies
+            for (let existingEnemy of this.enemies) {
+                const existingRect = {
+                    x: existingEnemy.x + this.enemy_width * (1 - hitboxScale) / 2,
+                    y: existingEnemy.y + this.enemy_height * (1 - hitboxScale) / 2,
+                    width: this.enemy_width * hitboxScale,
+                    height: this.enemy_height * hitboxScale + verticalBuffer
+                };
+                if (
+                    newEnemyRect.x < existingRect.x + existingRect.width &&
+                    newEnemyRect.x + newEnemyRect.width > existingRect.x &&
+                    newEnemyRect.y < existingRect.y + existingRect.height &&
+                    newEnemyRect.y + newEnemyRect.height > existingRect.y
+                ) {
                     validPosition = false;
                     break;
                 }
             }
             attempts++;
-        }
+        } while (!validPosition && attempts < maxAttempts);
 
+        // Only spawn if a valid position was found
         if (validPosition) {
-            this.enemies.push({ x: enemy_x, y: -this.enemy_height, designIndex: designIndex });
+            this.enemies.push({ x: enemy_x, y: -this.enemy_height, designIndex });
+            this.lastSpawnTime = Date.now(); // Update last spawn time
+        } else {
+            // Return the designIndex to the pool if no valid position
+            this.enemyPool.push(designIndex);
         }
     }
 
@@ -240,13 +238,12 @@ class CarRacing {
         e.preventDefault();
         if (this.game_over) {
             this.initialize();
-            this.game_over = false; 
+            this.game_over = false;
         } else {
             this.touchStartX = e.touches[0].clientX;
             this.touchStartY = e.touches[0].clientY;
         }
     }
-
     handleTouchMove(e) {
         e.preventDefault();
         if (this.touchStartX !== null && this.touchStartY !== null && !this.game_over) {
@@ -260,7 +257,6 @@ class CarRacing {
             this.touchStartY = touchY;
         }
     }
-
     handleTouchEnd(e) {
         e.preventDefault();
         this.touchStartX = null;
@@ -268,9 +264,14 @@ class CarRacing {
     }
 
     draw_objects() {
-        this.ctx.save();
-        this.ctx.scale(this.scale, this.scale);
+        // calcular offset para centrar mundo dentro del canvas
+        const offsetX = (this.canvas.width - this.base_width * this.scale) / 2;
+        const offsetY = (this.canvas.height - this.base_height * this.scale) / 2;
 
+        // Transformación para escalar y centrar (dibujo del "mundo")
+        this.ctx.setTransform(this.scale, 0, 0, this.scale, offsetX, offsetY);
+
+        // Fondo (mundo)
         const bgImage = this.backgroundImages[this.currentBackgroundIndex];
         if (bgImage.complete && bgImage.naturalWidth !== 0) {
             this.ctx.drawImage(bgImage, 0, this.bg_y, this.base_width, this.base_height);
@@ -280,105 +281,117 @@ class CarRacing {
             this.ctx.fillRect(0, 0, this.base_width, this.base_height);
         }
 
+        // Carro jugador (en coordenadas del mundo)
         if (this.playerCarImage.complete && this.playerCarImage.naturalWidth !== 0) {
-            this.ctx.drawImage(this.playerCarImage, this.car_x, this.car_y, this.car_width / this.scale, this.car_height / this.scale);
+            this.ctx.drawImage(this.playerCarImage, this.car_x, this.car_y, this.car_width, this.car_height);
         } else {
             this.ctx.fillStyle = this.red;
-            this.ctx.fillRect(this.car_x, this.car_y, this.car_width / this.scale, this.car_height / this.scale);
+            this.ctx.fillRect(this.car_x, this.car_y, this.car_width, this.car_height);
         }
 
+        // Enemigos (mundo)
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const enemy = this.enemies[i];
-            if (this.enemyCarImages[enemy.designIndex] && this.enemyCarImages[enemy.designIndex].complete && this.enemyCarImages[enemy.designIndex].naturalWidth !== 0) {
-                this.ctx.drawImage(this.enemyCarImages[enemy.designIndex], enemy.x, enemy.y, this.enemy_width / this.scale, this.enemy_height / this.scale);
+            const img = this.enemyCarImages[enemy.designIndex];
+            if (img && img.complete && img.naturalWidth !== 0) {
+                this.ctx.drawImage(img, enemy.x, enemy.y, this.enemy_width, this.enemy_height);
             } else {
                 this.ctx.fillStyle = this.white;
-                this.ctx.fillRect(enemy.x, enemy.y, this.enemy_width / this.scale, this.enemy_height / this.scale);
+                this.ctx.fillRect(enemy.x, enemy.y, this.enemy_width, this.enemy_height);
             }
             if (enemy.y > this.base_height + this.enemy_height) {
                 this.enemies.splice(i, 1);
-                this.score += 1;
-                if (this.score % 15 === 0) {//cambiar el fondo segun los puntos
+                this.score++;
+                if (this.score % 15 === 0) {
                     this.currentBackgroundIndex = (this.currentBackgroundIndex + 1) % this.backgroundImages.length;
                 }
             }
         }
 
-        this.ctx.font = `${50}px Comic Sans MS`;
-        this.ctx.fillStyle = this.white;
-        this.ctx.fillText(`Puntaje: ${this.score}`, 10, 40);
+        // dibujado del mundo terminado -> reset transform para dibujar HUD en píxeles del canvas
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-        this.ctx.restore();
+        // HUD: calcular posición en píxeles dentro del canvas para que quede dentro del área del juego centrado
+        const hudX = Math.round(offsetX + 10 * this.scale);
+        const hudY = Math.round(offsetY + 40 * this.scale);
+
+        // fuente responsiva para HUD (mínimo 12px)
+        const hudFontPx = Math.max(12, Math.round(30 * this.scale));
+        this.ctx.font = `${hudFontPx}px Comic Sans MS`;
+        this.ctx.fillStyle = this.white;
+        this.ctx.textAlign = "left";
+        this.ctx.fillText(`Puntaje: ${this.score}`, hudX, hudY);
     }
 
     display_message(msg) {
         this.game_over = true;
-        this.ctx.save();
-        this.ctx.scale(this.scale, this.scale);
+
+        // Limpiar todo el canvas con negro (evita restos del HUD)
+        this.ctx.setTransform(1,0,0,1,0,0);
         this.ctx.fillStyle = this.black;
-        this.ctx.fillRect(0, 0, this.base_width, this.base_height);
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        //para mover el texto e imagen
-        const baseY = this.base_height / 2 - 400;  
+        // Calcular offset (mismo que en draw_objects)
+        const offsetX = (this.canvas.width - this.base_width * this.scale) / 2;
+        const offsetY = (this.canvas.height - this.base_height * this.scale) / 2;
 
-        this.ctx.font = `bold ${72}px Comic Sans MS`;
+        // Dibujar mensaje en coordenadas del mundo (para que respete escala)
+        this.ctx.setTransform(this.scale, 0, 0, this.scale, offsetX, offsetY);
+
+        const baseY = this.base_height / 2 - 400;
+        // Títulos y textos en tamaño de "mundo"
+        this.ctx.font = `bold 72px Comic Sans MS`;
         this.ctx.fillStyle = this.white;
         this.ctx.textAlign = "center";
         this.ctx.fillText(msg, this.base_width / 2, baseY);
 
-        //puntaje
-        this.ctx.font = `${40}px Comic Sans MS`;
+        this.ctx.font = `40px Comic Sans MS`;
         this.ctx.fillText(`Puntaje final: ${this.score}`, this.base_width / 2, baseY + 70);
 
-        this.ctx.font = `${30}px Comic Sans MS`;
+        this.ctx.font = `30px Comic Sans MS`;
         this.ctx.fillText("Toca la pantalla o F para reiniciar", this.base_width / 2, baseY + 130);
 
-        //imagen del profe 
+        // Imagen profesor
         if (this.crashEnemy !== undefined) {
             const crashImg = this.crashImages[this.crashEnemy];
-            if (crashImg && crashImg.complete && crashImg.naturalWidth !== 0) {
-                const imgWidth = 400;
-                const imgHeight = 500;
-                const posX = this.base_width / 2 - imgWidth / 2;
-                const posY = baseY + 180;
-                this.ctx.drawImage(crashImg, posX, posY, imgWidth, imgHeight);
+            if (crashImg && crashImg.complete) {
+                this.ctx.drawImage(crashImg, this.base_width / 2 - 200, baseY + 180, 400, 500);
             }
         }
 
-        //logos
-        if (this.elitLogo.complete && this.elitLogo.naturalWidth !== 0) {
+        // Logos (opcional, dentro del mundo)
+        if (this.elitLogo && this.elitLogo.complete) {
             const logoSize = 100;
             this.ctx.drawImage(this.elitLogo, this.base_width - logoSize - 10, this.base_height - logoSize - 10, logoSize, logoSize);
         }
-
-        if (this.congresoLogo.complete && this.congresoLogo.naturalWidth !== 0) {
+        if (this.congresoLogo && this.congresoLogo.complete) {
             const logoSize = 120;
             this.ctx.drawImage(this.congresoLogo, 10, this.base_height - logoSize - 10, logoSize, logoSize);
         }
 
-        // Enviar puntaje al servidor
-        if (this.socket.readyState === WebSocket.OPEN) {
+        // Enviar puntaje al servidor si está abierto
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
             this.socket.send(JSON.stringify({ userId: this.userId, score: this.score }));
         }
 
-        this.ctx.textAlign = "center";
-        this.ctx.restore();
+        // dejar transform restaurada a identidad por si algo más dibuja después
+        this.ctx.setTransform(1,0,0,1,0,0);
     }
 
     check_collision() {
-        const hitboxScale = 0.5;//hitbox
+        const hitboxScale = 0.5;
         const car_rect = {
-            x: this.car_x + (this.car_width / this.scale) * (1 - hitboxScale) / 2,
-            y: this.car_y + (this.car_height / this.scale) * (1 - hitboxScale) / 2,
-            width: (this.car_width / this.scale) * hitboxScale,
-            height: (this.car_height / this.scale) * hitboxScale
+            x: this.car_x + this.car_width * (1 - hitboxScale) / 2,
+            y: this.car_y + this.car_height * (1 - hitboxScale) / 2,
+            width: this.car_width * hitboxScale,
+            height: this.car_height * hitboxScale
         };
         for (let enemy of this.enemies) {
             const enemy_rect = {
-                x: enemy.x + (this.enemy_width / this.scale) * (1 - hitboxScale) / 2,
-                y: enemy.y + (this.enemy_height / this.scale) * (1 - hitboxScale) / 2,
-                width: (this.enemy_width / this.scale) * hitboxScale,
-                height: (this.enemy_height / this.scale) * hitboxScale
+                x: enemy.x + this.enemy_width * (1 - hitboxScale) / 2,
+                y: enemy.y + this.enemy_height * (1 - hitboxScale) / 2,
+                width: this.enemy_width * hitboxScale,
+                height: this.enemy_height * hitboxScale
             };
             if (car_rect.x < enemy_rect.x + enemy_rect.width &&
                 car_rect.x + car_rect.width > enemy_rect.x &&
@@ -386,7 +399,7 @@ class CarRacing {
                 car_rect.y + car_rect.height > enemy_rect.y) {
                 this.crashEnemy = enemy.designIndex;
                 return true;
-            }    
+            }
         }
     }
 
@@ -396,18 +409,16 @@ class CarRacing {
             if (this.keys["ArrowRight"]) this.car_x += this.car_speed;
             if (this.keys["ArrowUp"]) this.car_y -= this.car_speed;
             if (this.keys["ArrowDown"]) this.car_y += this.car_speed;
-            if (this.paused) return; // si está en pausa no actualiza nada
+            if (this.paused) return;
 
+            // mantener dentro de los límites del mundo
+            this.car_x = Math.max(this.road_x, Math.min(this.car_x, this.road_x + this.road_width - this.car_width));
+            this.car_y = Math.max(0, Math.min(this.car_y, this.base_height - this.car_height));
 
-            this.car_x = Math.max(this.road_x, Math.min(this.car_x, this.road_x + this.road_width - this.car_width / this.scale));
-            this.car_y = Math.max(0, Math.min(this.car_y, this.base_height - this.car_height / this.scale));
-
-            for (let enemy of this.enemies) {
-                enemy.y += this.enemy_speed;
-            }
-
-            if (Math.random() < 0.01) {
-                this.enemy_speed += 0.8 * this.scale;//aumento de velocidad
+            for (let enemy of this.enemies) enemy.y += this.enemy_speed;
+            const currentTime = Date.now();
+            if (Math.random() < 0.01 && currentTime - this.lastSpawnTime >= this.minSpawnInterval) {
+                this.enemy_speed += 0.1;
                 this.spawnEnemy();
             }
 
@@ -420,22 +431,29 @@ class CarRacing {
             }
 
             this.draw_objects();
+        } else {
+            // Dibujar el mensaje de game over en cada frame para mantenerlo visible
+            this.display_message("¡Choque! Fin del juego");
         }
 
-        if (this.game_over && this.keys["f"]) {
+        if (this.game_over && (this.keys["f"] || this.keys["F"])) {
             this.initialize();
-            this.game_over = false; 
+            this.game_over = false;
         }
     }
-    
 
     run() {
         const gameLoop = () => {
-            this.update();
+            if (!this.paused) {
+                this.update();
+            }
             setTimeout(() => requestAnimationFrame(gameLoop), 1000 / this.fps);
         };
         requestAnimationFrame(gameLoop);
     }
+
+    // alias para reiniciar el bucle desde botones si hace falta
+    gameLoop() { this.run(); }
 }
 
 // Iniciar el juego
