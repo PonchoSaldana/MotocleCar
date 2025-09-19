@@ -541,3 +541,4 @@ class CarRacing {
 // Iniciar el juego
 const game = new CarRacing();
 game.run();
+
