@@ -3,43 +3,25 @@ import {
   WebSocketServer,
   SubscribeMessage,
   MessageBody,
-  ConnectedSocket,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import { Server } from 'ws';
 import { ScoresService } from './scores.service';
-import { CreateScoreDto } from './dto/create-score.dto';
 
-@WebSocketGateway({
-  cors: { origin: '*' },
-})
+@WebSocketGateway(8080, { cors: true }) // Puerto 8080 como en tu juego
 export class ScoresGateway {
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly scoresService: ScoresService) {}
+  constructor(private scoresService: ScoresService) {}
 
-  @SubscribeMessage('submitScore')
-  async handleScore(
-    @MessageBody() createScoreDto: CreateScoreDto,
-    @ConnectedSocket() client: Socket,
-  ) {
+  @SubscribeMessage('saveScore')
+  async handleSaveScore(@MessageBody() data: { userId: number; score: number }) {
     try {
-      // Guardar
-      const saved = await this.scoresService.saveScore(
-        createScoreDto.userId,
-        createScoreDto.score,
-      );
-
-      // Top 10
-      const leaderboard = await this.scoresService.getLeaderboard();
-
-      // Difundir ranking a todos
-      this.server.emit('leaderboardUpdate', leaderboard);
-
-      // Confirmar solo al cliente que envió
-      client.emit('scoreSaved', saved);
-    } catch (err) {
-      client.emit('errorSavingScore', { message: err.message });
+      const saved = await this.scoresService.saveScore(BigInt(data.userId), data.score);
+      return { success: true, id: saved.game_score_id };
+    } catch (error) {
+      console.error('Error guardando puntaje:', error);
+      return { success: false, error: error.message };
     }
   }
 }

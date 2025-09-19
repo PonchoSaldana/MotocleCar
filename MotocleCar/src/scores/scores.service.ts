@@ -1,30 +1,25 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Score } from './score.entity';
-import { User } from '../users/user.entity';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class ScoresService {
-  constructor(
-    @InjectRepository(Score)
-    private readonly scoreRepo: Repository<Score>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
-  async saveScore(userId: number, scoreValue: number) {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) throw new Error('Usuario no encontrado');
-
-    const score = this.scoreRepo.create({ value: scoreValue, user });
-    return await this.scoreRepo.save(score);
+  async saveScore(userId: bigint, value: number) {
+    return this.prisma.game_score.create({
+      data: {
+        game_score_id: BigInt(Date.now()), 
+        score: value,
+        users: { connect: { user_id: userId } },
+      },
+    });
   }
 
-  async getLeaderboard(limit = 10) {
-    return await this.scoreRepo.find({
-      order: { value: 'DESC' },
-      take: limit,
+  async getLeaderboard() {
+    return this.prisma.game_score.findMany({
+      orderBy: { score: 'desc' },
+      take: 10,
+      include: { users: true },
     });
   }
 }

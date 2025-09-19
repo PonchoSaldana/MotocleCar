@@ -4,4 +4,9 @@ export class CreateScoreDto {
   @IsInt()
   @IsPositive()
   score: number;
+
+  @IsInt()
+  @IsPositive()
+  userId: bigint;
 }
+
