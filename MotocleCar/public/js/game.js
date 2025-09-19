@@ -16,6 +16,7 @@ class CarRacing {
         this.fps = 90;
         this.paused = false;
         this.gameLoopId = null; // Inicializar gameLoopId
+        this.userId = null; // Inicializar userId, se asignará desde el login o backend
 
         // Fondos
         this.backgrounds = [
@@ -66,11 +67,33 @@ class CarRacing {
 
         this.initialize();
 
+        // Intentar obtener userId desde el login primero
+        this.loadUserIdFromLogin();
+        // Si no se obtuvo desde el login, consultar al backend
+        if (this.userId === null) {
+            this.fetchUserId();
+        }
+
+        // Configurar WebSocket para el backend
+        this.socket = new WebSocket('ws://localhost:8080'); // Para pruebas locales
+        // Para producción: this.socket = new WebSocket('wss://tu-backend.railway.app');
+        this.socket.onopen = () => console.log('Conectado al backend');
+        this.socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log('Respuesta del backend:', data);
+            if (data.success) {
+                console.log('Puntaje guardado con ID:', data.id);
+            } else {
+                console.error('Error al guardar puntaje:', data.error);
+            }
+        };
+        this.socket.onerror = (error) => console.error('Error en WebSocket:', error);
+        this.socket.onclose = () => console.log('Desconectado del backend');
+
         // Eventos teclado
         this.keys = {};
         window.addEventListener("keydown", (e) => {
             this.keys[e.key] = true;
-            // reproducir música al presionar tecla (si está pausada)
             if (this.backgroundMusic && this.backgroundMusic.paused) this.backgroundMusic.play();
         });
         window.addEventListener("keyup", (e) => this.keys[e.key] = false);
@@ -100,7 +123,7 @@ class CarRacing {
             "sounds/goosebumps.mp3",
             "sounds/ENALTAVOZ.mp3"
         ];
-       this.songPool = Array.from({length: this.songs.length}, (_, i) => i); // [0,1,2,3,4,5,6]
+        this.songPool = Array.from({length: this.songs.length}, (_, i) => i);
         this.shuffleSongs();
         this.currentSongIndex = 0;
         this.backgroundMusic = new Audio(this.songs[this.songPool[this.currentSongIndex]]);
@@ -123,7 +146,6 @@ class CarRacing {
         if (nextBtn) {
             nextBtn.addEventListener("click", () => {
                 this.backgroundMusic.pause();
-                // Move to the next song in the shuffled pool
                 this.currentSongIndex++;
                 if (this.currentSongIndex >= this.songPool.length) {
                     this.shuffleSongs();
@@ -133,8 +155,69 @@ class CarRacing {
                 this.backgroundMusic.play();
             });
         }
+    }
 
-        // ... (rest of the constructor remains unchanged)
+    // Método para cargar userId desde el sistema de login existente
+    loadUserIdFromLogin() {
+        // Prioridad 1: localStorage (persiste entre sesiones)
+        const storedUserId = localStorage.getItem('userId');
+        if (storedUserId) {
+            this.userId = BigInt(storedUserId);
+            console.log('UserId cargado desde localStorage:', this.userId);
+            return;
+        }
+
+        // Prioridad 2: sessionStorage (solo sesión actual)
+        const sessionUserId = sessionStorage.getItem('userId');
+        if (sessionUserId) {
+            this.userId = BigInt(sessionUserId);
+            console.log('UserId cargado desde sessionStorage:', this.userId);
+            return;
+        }
+
+        // Prioridad 3: Variable global (definida en la página principal)
+        if (window.currentUserId) {
+            this.userId = BigInt(window.currentUserId);
+            console.log('UserId cargado desde variable global:', this.userId);
+            return;
+        }
+
+        // Prioridad 4: Data attribute en el contenedor del juego (ej. <div data-user-id="123">)
+        const gameContainer = document.getElementById('gameContainer') || document.body;
+        if (gameContainer.dataset.userId) {
+            this.userId = BigInt(gameContainer.dataset.userId);
+            console.log('UserId cargado desde data attribute:', this.userId);
+            return;
+        }
+
+        // No encontrado
+        console.log('No se encontró userId desde el login, intentará obtenerlo del backend.');
+    }
+
+    // Método para obtener userId desde el backend como fallback
+    fetchUserId() {
+        fetch('http://localhost:3000/get-user-id', { // Cambia a tu URL de Railway en producción (ej. https://tu-app.railway.app/get-user-id)
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.userId) {
+                this.userId = BigInt(data.userId); // Asegura que sea BIGINT
+                console.log('UserId obtenido del backend:', this.userId);
+            } else {
+                console.error('No se pudo obtener userId desde el backend:', data.error);
+                // Fallback: generar un userId temporal si falla
+                this.userId = BigInt(Date.now() * 1000 + Math.floor(Math.random() * 1000));
+                console.log('UserId temporal generado:', this.userId);
+            }
+        })
+        .catch(err => {
+            console.error('Error al conectar con el backend para userId:', err);
+            // Fallback: generar un userId temporal si falla la conexión
+            this.userId = BigInt(Date.now() * 1000 + Math.floor(Math.random() * 1000));
+            console.log('UserId temporal generado:', this.userId);
+        });
     }
 
     shuffleSongs() {
@@ -143,6 +226,7 @@ class CarRacing {
             [this.songPool[i], this.songPool[j]] = [this.songPool[j], this.songPool[i]];
         }
     }
+
     shuffleEnemies() {
         for (let i = this.enemyPool.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -160,7 +244,6 @@ class CarRacing {
     }
 
     initialize() {
-        // Notar: valores en "unidades del mundo" (no multiplicados por scale)
         this.car_width = 120;
         this.car_height = 240;
         this.car_x = this.base_width / 2 - this.car_width / 2;
@@ -176,8 +259,8 @@ class CarRacing {
         this.game_over = false;
         this.road_width = this.base_width / 2;
         this.road_x = this.base_width / 4;
-        this.currentBackgroundIndex = 0; // Reset background to first one
-        this.lastSpawnTime = 0; // Reset spawn timer
+        this.currentBackgroundIndex = 0;
+        this.lastSpawnTime = 0;
         this.spawnEnemy();
     }
 
@@ -187,9 +270,9 @@ class CarRacing {
             this.shuffleEnemies();
         }
         const designIndex = this.enemyPool.pop();
-        const hitboxScale = 0.5; // Same as in check_collision
-        const maxAttempts = 10; // Limit attempts to avoid infinite loops
-        const verticalBuffer = this.enemy_height * 2; // Buffer to prevent vertical overlap
+        const hitboxScale = 0.5;
+        const maxAttempts = 10;
+        const verticalBuffer = this.enemy_height * 2;
         let attempts = 0;
         let enemy_x, validPosition;
 
@@ -200,10 +283,9 @@ class CarRacing {
                 x: enemy_x + this.enemy_width * (1 - hitboxScale) / 2,
                 y: -this.enemy_height + this.enemy_height * (1 - hitboxScale) / 2,
                 width: this.enemy_width * hitboxScale,
-                height: this.enemy_height * hitboxScale + verticalBuffer // Extended hitbox vertically
+                height: this.enemy_height * hitboxScale + verticalBuffer
             };
 
-            // Check for overlap with existing enemies
             for (let existingEnemy of this.enemies) {
                 const existingRect = {
                     x: existingEnemy.x + this.enemy_width * (1 - hitboxScale) / 2,
@@ -224,12 +306,10 @@ class CarRacing {
             attempts++;
         } while (!validPosition && attempts < maxAttempts);
 
-        // Only spawn if a valid position was found
         if (validPosition) {
             this.enemies.push({ x: enemy_x, y: -this.enemy_height, designIndex });
-            this.lastSpawnTime = Date.now(); // Update last spawn time
+            this.lastSpawnTime = Date.now();
         } else {
-            // Return the designIndex to the pool if no valid position
             this.enemyPool.push(designIndex);
         }
     }
@@ -244,6 +324,7 @@ class CarRacing {
             this.touchStartY = e.touches[0].clientY;
         }
     }
+
     handleTouchMove(e) {
         e.preventDefault();
         if (this.touchStartX !== null && this.touchStartY !== null && !this.game_over) {
@@ -257,6 +338,7 @@ class CarRacing {
             this.touchStartY = touchY;
         }
     }
+
     handleTouchEnd(e) {
         e.preventDefault();
         this.touchStartX = null;
@@ -264,14 +346,11 @@ class CarRacing {
     }
 
     draw_objects() {
-        // calcular offset para centrar mundo dentro del canvas
         const offsetX = (this.canvas.width - this.base_width * this.scale) / 2;
         const offsetY = (this.canvas.height - this.base_height * this.scale) / 2;
 
-        // Transformación para escalar y centrar (dibujo del "mundo")
         this.ctx.setTransform(this.scale, 0, 0, this.scale, offsetX, offsetY);
 
-        // Fondo (mundo)
         const bgImage = this.backgroundImages[this.currentBackgroundIndex];
         if (bgImage.complete && bgImage.naturalWidth !== 0) {
             this.ctx.drawImage(bgImage, 0, this.bg_y, this.base_width, this.base_height);
@@ -281,7 +360,6 @@ class CarRacing {
             this.ctx.fillRect(0, 0, this.base_width, this.base_height);
         }
 
-        // Carro jugador (en coordenadas del mundo)
         if (this.playerCarImage.complete && this.playerCarImage.naturalWidth !== 0) {
             this.ctx.drawImage(this.playerCarImage, this.car_x, this.car_y, this.car_width, this.car_height);
         } else {
@@ -289,7 +367,6 @@ class CarRacing {
             this.ctx.fillRect(this.car_x, this.car_y, this.car_width, this.car_height);
         }
 
-        // Enemigos (mundo)
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const enemy = this.enemies[i];
             const img = this.enemyCarImages[enemy.designIndex];
@@ -308,14 +385,11 @@ class CarRacing {
             }
         }
 
-        // dibujado del mundo terminado -> reset transform para dibujar HUD en píxeles del canvas
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-        // HUD: calcular posición en píxeles dentro del canvas para que quede dentro del área del juego centrado
         const hudX = Math.round(offsetX + 10 * this.scale);
         const hudY = Math.round(offsetY + 40 * this.scale);
 
-        // fuente responsiva para HUD (mínimo 12px)
         const hudFontPx = Math.max(12, Math.round(30 * this.scale));
         this.ctx.font = `${hudFontPx}px Comic Sans MS`;
         this.ctx.fillStyle = this.white;
@@ -326,20 +400,16 @@ class CarRacing {
     display_message(msg) {
         this.game_over = true;
 
-        // Limpiar todo el canvas con negro (evita restos del HUD)
-        this.ctx.setTransform(1,0,0,1,0,0);
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.ctx.fillStyle = this.black;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Calcular offset (mismo que en draw_objects)
         const offsetX = (this.canvas.width - this.base_width * this.scale) / 2;
         const offsetY = (this.canvas.height - this.base_height * this.scale) / 2;
 
-        // Dibujar mensaje en coordenadas del mundo (para que respete escala)
         this.ctx.setTransform(this.scale, 0, 0, this.scale, offsetX, offsetY);
 
         const baseY = this.base_height / 2 - 400;
-        // Títulos y textos en tamaño de "mundo"
         this.ctx.font = `bold 72px Comic Sans MS`;
         this.ctx.fillStyle = this.white;
         this.ctx.textAlign = "center";
@@ -351,7 +421,6 @@ class CarRacing {
         this.ctx.font = `30px Comic Sans MS`;
         this.ctx.fillText("Toca la pantalla o F para reiniciar", this.base_width / 2, baseY + 130);
 
-        // Imagen profesor
         if (this.crashEnemy !== undefined) {
             const crashImg = this.crashImages[this.crashEnemy];
             if (crashImg && crashImg.complete) {
@@ -359,7 +428,6 @@ class CarRacing {
             }
         }
 
-        // Logos (opcional, dentro del mundo)
         if (this.elitLogo && this.elitLogo.complete) {
             const logoSize = 100;
             this.ctx.drawImage(this.elitLogo, this.base_width - logoSize - 10, this.base_height - logoSize - 10, logoSize, logoSize);
@@ -369,13 +437,27 @@ class CarRacing {
             this.ctx.drawImage(this.congresoLogo, 10, this.base_height - logoSize - 10, logoSize, logoSize);
         }
 
-        // Enviar puntaje al servidor si está abierto
-        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            this.socket.send(JSON.stringify({ userId: this.userId, score: this.score }));
+        // Enviar puntaje al servidor solo si userId está asignado
+        if (this.userId !== null) {
+            if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                this.socket.send(JSON.stringify({ userId: Number(this.userId), score: this.score }));
+                console.log('Puntaje enviado via WebSocket:', { userId: this.userId, score: this.score });
+            } else {
+                console.log('WebSocket no disponible, intentando HTTP...');
+                fetch('https://tu-backend.railway.app/save-score', { // Cambia a tu URL de Railway
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: Number(this.userId), score: this.score })
+                })
+                .then(res => res.json())
+                .then(data => console.log('Puntaje guardado via HTTP:', data))
+                .catch(err => console.error('Error al enviar puntaje via HTTP:', err));
+            }
+        } else {
+            console.error('No se pudo enviar puntaje: userId no asignado');
         }
 
-        // dejar transform restaurada a identidad por si algo más dibuja después
-        this.ctx.setTransform(1,0,0,1,0,0);
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
     check_collision() {
@@ -401,6 +483,7 @@ class CarRacing {
                 return true;
             }
         }
+        return false;
     }
 
     update() {
@@ -411,7 +494,6 @@ class CarRacing {
             if (this.keys["ArrowDown"]) this.car_y += this.car_speed;
             if (this.paused) return;
 
-            // mantener dentro de los límites del mundo
             this.car_x = Math.max(this.road_x, Math.min(this.car_x, this.road_x + this.road_width - this.car_width));
             this.car_y = Math.max(0, Math.min(this.car_y, this.base_height - this.car_height));
 
@@ -432,7 +514,6 @@ class CarRacing {
 
             this.draw_objects();
         } else {
-            // Dibujar el mensaje de game over en cada frame para mantenerlo visible
             this.display_message("¡Choque! Fin del juego");
         }
 
@@ -444,15 +525,16 @@ class CarRacing {
 
     run() {
         const gameLoop = () => {
-            if (!this.paused) {
+            if (!this.game_over && !this.paused) {
                 this.update();
+            } else if (this.game_over) {
+                this.update(); // Mantener el mensaje visible
             }
             setTimeout(() => requestAnimationFrame(gameLoop), 1000 / this.fps);
         };
         requestAnimationFrame(gameLoop);
     }
 
-    // alias para reiniciar el bucle desde botones si hace falta
     gameLoop() { this.run(); }
 }
 

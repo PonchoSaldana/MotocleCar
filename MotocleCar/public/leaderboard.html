@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="200x200" href="images/logos/favicon.png">
+  <title>Clasificaciones - MotocleCar</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #e0e0e0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      color: #265488;
+      margin-top: 20px;
+    }
+    .leaderboard {
+      width: 80%;
+      margin: 20px auto;
+      border-collapse: collapse;
+      background-color: #f9f9f9;
+    }
+    .leaderboard th, .leaderboard td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    .leaderboard th {
+      background-color: #265488;
+      color: white;
+    }
+    .leaderboard tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+    .leaderboard tr:hover {
+      background-color: #ddd;
+    }
+    .back-btn {
+      padding: 10px 20px;
+      font-size: 1rem;
+      background-color: #265488;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .back-btn:hover {
+      background-color: #265488;
+    }
+  </style>
+</head>
+<body>
+  <h1>Clasificaciones - MotocleCar</h1>
+  <table id="leaderboardTable" class="leaderboard">
+    <thead>
+      <tr>
+        <th>Posición</th>
+        <th>Nombre</th>
+        <th>Puntaje</th>
+        <th>Fecha del Puntaje</th>
+        <th>Fecha de Registro</th>
+      </tr>
+    </thead>
+    <tbody id="leaderboardBody">
+      <!-- Datos se llenarán dinámicamente -->
+    </tbody>
+  </table>
+  <button class="back-btn" onclick="window.location.href='index.html'">Volver al Juego</button>
+
+  <script>
+    function updateLeaderboard() {
+      fetch('postgresql://postgres:kXHMZzHWAiISWSGKbpiKXHBfbKbnQwQK@caboose.proxy.rlwy.net:51892/railway?') 
+        .then(res => res.json())
+        .then(data => {
+          const tbody = document.getElementById('leaderboardBody');
+          tbody.innerHTML = ''; // Limpiar tabla
+          data.forEach((row, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${index + 1}</td>
+              <td>${row.name || 'Usuario Anónimo'}</td> <!-- Mostrar name o fallback -->
+              <td>${row.score}</td>
+              <td>${new Date(row.created_at).toLocaleString()}</td>
+              <td>${new Date(row.user_registration_date).toLocaleString()}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        })
+        .catch(err => console.error('Error al cargar leaderboard:', err));
+    }
+
+    setInterval(updateLeaderboard, 10000);
+    updateLeaderboard(); // Carga inicial
+  </script>
+</body>
+</html>

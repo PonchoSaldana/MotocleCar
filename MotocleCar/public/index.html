@@ -40,16 +40,38 @@
       max-height: 100%;
       touch-action: manipulation;
     }
+    /* Estilo para el botón de clasificaciones */
+    .button.leaderboard-btn {
+      position: relative;
+      padding: 15px 30px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: white;
+      background-color: #4CAF50;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: background-color 0.3s;
+    }
+    .button.leaderboard-btn:hover {
+      background-color: #45a049;
+    }
+    /* Posicionar el botón dentro del juego */
+    #gameContainer .leaderboard-btn {
+      margin: 10px;
+      align-self: center;
+    }
   </style>
 </head>
 <body>
   <!-- Página de entrada -->
   <div id="entry-page">
-    <h1></h1>
+    <h1>MotocleCar</h1>
     
     <!-- Botón de inicio con estilo de katana -->
     <button class="button" id="start-button">
-      <span class="text">ST&nbsp;&nbsp;&nbsp;&nbsp; RT</span>
+      <span class="text">ST&nbsp;&nbsp;&nbsp;&nbsp;RT</span>
       <div class="katana-container">
         <div class="katana katana-1">
           <div class="handle"></div>
@@ -102,6 +124,11 @@
           24H360c13.3 0 24-10.7 24-24s-10.7-24-24-24H248z"/>
         </svg>
       </button>
+
+      <!-- Botón para ver clasificaciones -->
+      <button  class="Btn" id="leaderboardBtn" onclick="window.location.href='leaderboard.html'">
+        Clasificaciones
+      </button>
     </div>
   </div>
 
@@ -113,11 +140,12 @@
       document.getElementById('entry-page').style.display = 'none';
       // Mostrar el contenedor del juego
       document.getElementById('gameContainer').style.display = 'block';
-  
-            game.run();
-          }
-      
-    );
+
+      // Iniciar el juego
+      if (typeof game !== 'undefined' && game.run) {
+        game.run();
+      }
+    });
   </script>
 </body>
 </html>
